@@ -54,7 +54,6 @@ class Crawler():
 
 	def init_storage(self):
 		#change: create the "storage" dir first, then do the rest
-		utils.create_table(self.conn, self.table_name) #create url table
 		utils.create_doc_dir(self.crawl_method, self.doc_paths) #create file storage dir
 		self.url_file = open('storage/urls_{}.txt'.format(self.crawl_method), 'w')
 
@@ -62,6 +61,7 @@ class Crawler():
 		os.chdir('storage')
 		self.conn = utils.create_conn(self.db_path)
 		os.chdir('..')
+		utils.create_table(self.conn, self.table_name) #create url table
 
 	def init_seed(self):
 		#get frontier

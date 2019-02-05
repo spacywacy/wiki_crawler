@@ -9,43 +9,16 @@ import os
 import time
 
 def main():
-	#test1()
-	test2()
+	#test()
+	pass
 
-def test1():
-	db_ = 'test_.db'
-	tname_ = 'test_table'
-	conn_ = create_conn(db_)
+def test():
+	#pass
 	url_ = 'https://en.wikipedia.org/wiki/Space_exploration'
-	prefix_ = 'https://en.wikipedia.org'
-	hash_val = hash_url(url_)
-	soup_ = make_soup(url_, class_val='mw-parser-output')
-	fpath = 'test_fpath/'
-
-	keywords_ = [
-				'Mars',
-				'Rover',
-				'Orbiter',
-				'Pathfinder',
-				'Mars Mission',
-				'Mars Exploration',
-				'Martian',
-				'explore',
-				'orbit',
-				'red planet'
-				]
-	rele_ = check_relevant(soup_, keywords_)
-	print(rele_)
-	conn_.close()
-
-def test2():
-	doc_paths = {
-		'BFS':'storage/docs_BFS/',
-		'DFS':'storage/docs_DFS/'
-	}
-	method = 'BFS'
-	create_doc_dir(method, doc_paths)
-
+	soup_ = make_soup(url_)
+	urls = get_page_urls(soup_)
+	print(len(urls))
+	print(len(list(set(urls))))
 
 def request_w_trials(url, log_f=None, timeout_=60, trytimes=5, data_payload=None):
 	e_str = ''
@@ -225,6 +198,21 @@ def hash_url(url):
 def delay(length):
 	time.sleep(length)
 
+def overlap(db_path, table_1, table_2):
+	conn = create_conn(db_path)
+	cursor = conn.cursor()
+	sql_ = '''
+			select url, hash_val from {}
+			intersect
+			select url, hash_val from {};
+		   '''.format(table_1, table_2)
+
+	cursor.execute(sql_)
+	result = cursor.fetchall()
+	cursor.close()
+	conn.close()
+
+	return result
 
 
 

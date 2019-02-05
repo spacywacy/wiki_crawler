@@ -1,5 +1,6 @@
 import utils
 import os
+from time import time
 
 def crawler_factory(seed_url=None, method='BFS', load_path=None):
 	if load_path:
@@ -9,10 +10,12 @@ def crawler_factory(seed_url=None, method='BFS', load_path=None):
 
 class Crawler():
 
-	def __init__(self, seed_url, method='BFS', if_store_doc=True):
+	def __init__(self, seed_url, method='BFS', if_store_doc=True, if_focused=False):
 		self.seed_url = seed_url
 		self.depth = 1
+		self.depth_reached = 1
 		self.url_count = 0
+		self.duplicate_count = 0
 		self.level_end_str = '__level_ends__' #for BFS only
 		self.state_path = 'storage/state.pickle'
 		self.max_depth = 6
@@ -20,17 +23,23 @@ class Crawler():
 		self.crawl_method = method
 		self.doc_paths = {
 			'BFS':'storage/docs_BFS/',
-			'DFS':'storage/docs_DFS/'
+			'DFS':'storage/docs_DFS/',
+			'BFS_focused':'storage/docs_BFS_focused/'
 		}
 		self.if_store_doc = if_store_doc
 		self.store_docs_at = self.doc_paths[self.crawl_method]
 		self.db_path = 'urls.db'
 		self.frontier = []
 		self.dfs_tree = {0:[self.seed_url]}
-		self.focused = False
+		self.focused = if_focused
 		self.conn = None
 		self.url_file = None
-		self.table_name = 'url_lookup_'
+		self.tname_lookup = {
+			'BFS':'url_lookup_BFS',
+			'DFS':'url_lookup_DFS',
+			'BFS_focused':'url_lookup_DFS_f'
+		}
+		self.table_name = self.tname_lookup[self.crawl_method]
 		self.url_prefix = 'https://en.wikipedia.org'
 		self.content_class = 'mw-parser-output'
 		self.sleep_time = 1
@@ -55,7 +64,7 @@ class Crawler():
 	def init_storage(self):
 		#change: create the "storage" dir first, then do the rest
 		utils.create_doc_dir(self.crawl_method, self.doc_paths) #create file storage dir
-		self.url_file = open('storage/urls_{}.txt'.format(self.crawl_method), 'w')
+		self.url_file = open('storage/urls_{}.txt'.format(self.crawl_method), 'a')
 
 		#create/connect to db file
 		os.chdir('storage')
@@ -77,8 +86,15 @@ class Crawler():
 						self.seed_url,
 						seed_doc_path,
 						url_file=self.url_file)
+		self.depth+=1
 
 	def pickle_self(self):
+		self.total_time = time() - self.t0
+		self.url_file.write('\nUrl counts:{}\nDuplicate counts{}'.format(self.url_count, self.duplicate_count))
+		self.url_file.write('\nTime taken: {}'.format(self.total_time))
+		if self.depth_reached > self.max_depth:
+			self.depth_reached-=1
+		self.url_file.write('\nDepth reached: {}'.format(self.depth_reached))
 		self.url_file.close()
 		self.url_file = None
 		self.conn.close()
@@ -104,6 +120,11 @@ class Crawler():
 			if url == self.level_end_str:
 				self.frontier.append(self.level_end_str)
 				self.depth += 1
+
+				#track total depth
+				if self.depth > self.depth_reached:
+					self.depth_reached = self.depth
+
 				continue
 
 			#do crawl
@@ -124,6 +145,9 @@ class Crawler():
 					self.frontier += utils.get_page_urls(doc_soup, url_prefix=self.url_prefix) #append urls in current page to frontier
 					self.url_count += 1
 					print('url count:', self.url_count)
+
+			else:
+				self.duplicate_count += 1
 
 
 	def DFS(self):
@@ -160,9 +184,17 @@ class Crawler():
 					doc_path = utils.store_doc(hash_val, doc_soup, self.store_docs_at, if_store=self.if_store_doc) #store document content on disk
 					utils.store_url(self.conn, self.table_name, hash_val, url, doc_path, url_file=self.url_file) #store url & path to doc content to db
 					self.depth += 1 #go down a level
+
+					#track total depth
+					if self.depth > self.depth_reached:
+						self.depth_reached = self.depth
+
 					self.dfs_tree[self.depth] = utils.get_page_urls(doc_soup, url_prefix=self.url_prefix) #create url list for lower level
 					self.url_count += 1
 					print('url count:', self.url_count)
+
+			else:
+				self.duplicate_count += 1
 
 	#implement for fun
 	def BFS_recursive(self):
@@ -174,42 +206,47 @@ class Crawler():
 
 	def crawl(self):
 		try:
+			self.t0 = time()
 			if self.crawl_method == 'BFS':
 				self.BFS()
 			elif self.crawl_method == 'DFS':
 				self.DFS()
-			elif self.crawl_method == 'BFS_r':
-				self.BFS_recursive()
+			elif self.crawl_method == 'BFS_focused':
+				self.BFS()
 
-			self.url_file.close()
+			print('finished {}\n'.format(self.crawl_method))
+
+			
 
 		except Exception as e:
 			print(e)
 			self.pickle_self()
-			self.url_file.close()
-
-		self.conn.close()
 			
 
 
+'''
+				   _ooOoo_
+				  o8888888o
+				  88" . "88
+				  (| -_- |)
+				  O|  =  /O
+			   ____/`---'|____
+			 .'  |||     |||  `.
+			/  |||||  :  |||||  \
+		   /  _||||| -:- |||||-  \
+		   |   | |||  -  ||| |   |
+		   | |_|  ''|---|''  |   |
+		   |  .-|__  `-`  ___|-. /
+		 ___`. .'  /--.--|  `. . __
+	  ."" '<  `.___|_<|>_/___.'  >'"".
+	 | | :  `- |`.;`| _ /`;.`/ - ` : | |
+	 |  | `-.   |_ __| /__ _/   .-` /  /
+======`-.____`-.___|_____/___.-`____.-'======
+				   `=---='
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+			佛祖保佑       永无BUG
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+'''
 
 
 

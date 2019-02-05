@@ -7,8 +7,8 @@ def main():
 	web.show_tree()
 	db = mock_storage()
 	crawler = mock_crawler(db, web)
-	#crawler.BFS()
-	crawler.DFS()
+	crawler.BFS()
+	#crawler.DFS()
 	crawler.storage.show()
 	crawler.storage.show_all()
 
@@ -17,7 +17,7 @@ class mock_web():
 
 	def __init__(self):
 		self.max_depth = 3
-		self.max_n = 200
+		self.max_n = 100
 		self.node_min = 1
 		self.node_max = 5
 		self.depth = 1
@@ -107,7 +107,7 @@ class mock_crawler():
 		self.level_end_str = '__level_ends__' #for BFS only
 		self.state_path = 'state.pickle'
 		self.max_depth = 12
-		self.max_url_count = 100
+		self.max_url_count = 10
 		self.frontier = []
 		self.dfs_tree = {0:[self.seed_url]}
 		self.storage = storage
@@ -178,7 +178,21 @@ class mock_crawler():
 
 
 
-
+'''
+'Mars',
+						'Rover',
+						'Mars rover'
+						'Orbiter',
+						'Mars orbiting',
+						'Mars orbit',
+						'Mars orbiter',
+						'Pathfinder',
+						'Mars Pathfinder',
+						'Mars Mission',
+						'Mars Exploration',
+						'Martian',
+						'red planet']
+'''
 
 
 
